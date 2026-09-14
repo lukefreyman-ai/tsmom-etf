@@ -39,9 +39,15 @@ def test_compute_target_orders_whole_shares_sells_first():
     assert by["SPY"].side == "buy" and by["SPY"].qty == 30          # floor(20000/500)=40 target, hold 10
     assert by["TLT"].side == "buy" and by["TLT"].qty == 222         # floor(20000/90)=222
     assert all(float(o.qty).is_integer() for o in orders)
-    # dust: 0.2% change ignored
-    tiny = ex.compute_target_orders(pd.Series({"SPY": 0.2}), 100_000, {"SPY": {"qty": 40, "price": 500.0}}, {"SPY": 502.0})
+    # inside the 2pp rebalance band: no trade (holding 21.5% vs 20% target)
+    tiny = ex.compute_target_orders(pd.Series({"SPY": 0.2}), 100_000, {"SPY": {"qty": 43, "price": 500.0}}, {"SPY": 500.0})
     assert tiny == []
+    # outside it: trade back to target
+    big = ex.compute_target_orders(pd.Series({"SPY": 0.2}), 100_000, {"SPY": {"qty": 45, "price": 500.0}}, {"SPY": 500.0})
+    assert len(big) == 1 and big[0].side == "sell" and big[0].qty == 5
+    # a 1% target from zero is a full entry: trades regardless of band
+    entry = ex.compute_target_orders(pd.Series({"SPY": 0.01}), 100_000, {}, {"SPY": 500.0})
+    assert len(entry) == 1 and entry[0].qty == 2
 
 
 def test_dry_run_submits_nothing_and_journals(sandbox):

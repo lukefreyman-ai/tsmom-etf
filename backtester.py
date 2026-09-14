@@ -34,8 +34,11 @@ class BacktestResult:
 
 def run_backtest(prices: dict[str, pd.DataFrame], weights_fn=None, constant_weights: dict | None = None,
                  initial_capital: float = settings.INITIAL_CAPITAL, cost_per_side: float = settings.COST_PER_SIDE,
-                 min_trade_weight: float = settings.MIN_TRADE_WEIGHT, start: str | None = None) -> BacktestResult:
-    """weights_fn(close) -> DataFrame of decided weights (row t uses data <= t). Or constant_weights for benchmarks."""
+                 rebalance_band: float = settings.REBALANCE_BAND, start: str | None = None) -> BacktestResult:
+    """weights_fn(close) -> DataFrame of decided weights (row t uses data <= t). Or constant_weights for benchmarks.
+
+    rebalance_band: a position is only traded when |target - current weight| >= band, except that full entries
+    (0 -> w) and full exits (w -> 0) always trade. 0 disables the band."""
     close, opn = prices["close"], prices["open"]
     tickers = list(close.columns)
     if constant_weights is not None:
@@ -68,7 +71,12 @@ def run_backtest(prices: dict[str, pd.DataFrame], weights_fn=None, constant_weig
             cur_w = (shares * px_open.fillna(0.0)) / nav_open
             for t in tickers:
                 dw = w[t] - cur_w[t]
-                if abs(dw) < min_trade_weight or np.isnan(px_open[t]):
+                if np.isnan(px_open[t]):
+                    continue
+                entry_or_exit = (w[t] > 0 and abs(cur_w[t]) < 1e-9) or (w[t] == 0 and abs(cur_w[t]) > 1e-9)
+                if abs(dw) < rebalance_band and not entry_or_exit:
+                    continue
+                if abs(dw) < 1e-9:
                     continue
                 target_shares = w[t] * nav_open / px_open[t]
                 dq = target_shares - shares[t]

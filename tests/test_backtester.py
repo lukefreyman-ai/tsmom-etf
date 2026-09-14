@@ -55,6 +55,26 @@ def test_constant_weights_benchmark_holds_target():
     assert (w["C"] == 0).all()
 
 
+def test_rebalance_band_skips_small_drifts_but_not_entries_exits():
+    px = _prices()
+    idx = px["close"].index
+    # constant target 0.30 in A: drift between monthly rebalances is usually < 2pp, so the band suppresses trades
+    banded = backtester.run_backtest(px, constant_weights={"A": 0.30}, rebalance_band=0.02, cost_per_side=0.0)
+    free = backtester.run_backtest(px, constant_weights={"A": 0.30}, rebalance_band=0.0, cost_per_side=0.0)
+    assert 0 < len(banded.trades) < len(free.trades)
+    assert (banded.weights["A"].iloc[30:] - 0.30).abs().max() < 0.06        # never far from target
+    # hand-built weight path: entry, tiny wobble (skipped), exit -> exactly 2 trades
+    rb = strategy.rebalance_dates(idx)
+    w = pd.DataFrame(0.0, index=idx, columns=px["close"].columns)
+    w.loc[idx >= rb[2], "A"] = 0.25
+    w.loc[idx >= rb[3], "A"] = 0.26          # +1pp: inside the band -> no trade
+    w.loc[idx >= rb[4], "A"] = 0.0           # exit: always trades
+    res = backtester.run_backtest(px, weights_fn=lambda close: w, rebalance_band=0.02, cost_per_side=0.0)
+    assert list(res.trades["side"]) == ["buy", "sell"]
+    assert res.trades["date"].tolist() == [rb[3], rb[5]]
+    assert res.weights["A"].iloc[-1] == 0.0
+
+
 def test_exposure_never_exceeds_caps():
     px = _prices()
     res = backtester.run_backtest(px)

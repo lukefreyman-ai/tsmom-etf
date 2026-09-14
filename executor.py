@@ -186,8 +186,9 @@ def is_rebalance_day(today: date, trading_days: list[date]) -> bool:
 
 
 def compute_target_orders(weights: pd.Series, equity: float, positions: dict[str, dict], prices: dict[str, float],
-                          min_trade_weight: float = settings.MIN_TRADE_WEIGHT) -> list[rm.Order]:
-    """Whole-share orders that move the book from `positions` to `weights` x equity. Sells first."""
+                          rebalance_band: float = settings.REBALANCE_BAND) -> list[rm.Order]:
+    """Whole-share orders that move the book from `positions` to `weights` x equity. Sells first.
+    Same band rule as the backtester: trade only if |target - current| >= band, or it is a full entry / exit."""
     orders = []
     tickers = sorted(set(weights.index) | set(positions))
     for t in tickers:
@@ -197,8 +198,9 @@ def compute_target_orders(weights: pd.Series, equity: float, positions: dict[str
             continue
         cur = float(positions.get(t, {}).get("qty", 0.0))
         cur_w = cur * px / equity
-        if abs(w - cur_w) < min_trade_weight and not (w == 0 and cur > 0):
-            continue                                   # drift under 0.5% of NAV: not worth a trade
+        entry_or_exit = (w > 0 and cur == 0) or (w == 0 and cur > 0)
+        if abs(w - cur_w) < rebalance_band and not entry_or_exit:
+            continue                                   # inside the rebalance band: not worth a trade
         target = math.floor(w * equity / px) if w > 0 else 0
         delta = target - cur
         if delta == 0:

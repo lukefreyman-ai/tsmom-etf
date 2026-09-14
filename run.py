@@ -77,6 +77,22 @@ def cmd_backtest(args):
     sens = pd.DataFrame(rows)
     sens.to_csv(settings.RESULTS_DIR / "sensitivity.csv", index=False)
 
+    # ---- ablation: v1 per-position sizing vs v2 portfolio vol targeting, with and without the 2pp band
+    abl = []
+    for label, sizing, band in [("v1 per-position vol, 0.5% dust filter (original)", "per_position", 0.005),
+                                ("v1 per-position vol + 2pp band", "per_position", settings.REBALANCE_BAND),
+                                ("v2 portfolio vol, 0.5% dust filter", "portfolio", 0.005),
+                                ("v2 portfolio vol + 2pp band (current)", "portfolio", settings.REBALANCE_BAND)]:
+        fn = partial(strategy.target_weights, sizing=sizing)
+        r = bt.run_backtest(px, weights_fn=fn, rebalance_band=band)
+        r0 = bt.run_backtest(px, weights_fn=fn, rebalance_band=band, cost_per_side=0.0)
+        mf, m0, mo = bt.compute_metrics(r, *periods["full"]), bt.compute_metrics(r0, *periods["full"]), bt.compute_metrics(r, *periods["out_of_sample"])
+        abl.append({"config": label, "sizing": sizing, "band": band, "cagr": mf["cagr"], "ann_vol": mf["ann_vol"], "sharpe": mf["sharpe"],
+                    "max_drawdown": mf["max_drawdown"], "calmar": mf["calmar"], "sharpe_oos": mo["sharpe"], "avg_gross_exposure": mf["avg_gross_exposure"],
+                    "n_trades": mf["n_trades"], "annual_turnover": mf["annual_turnover"], "cagr_drag": m0["cagr"] - mf["cagr"], "cagr_no_cost": m0["cagr"]})
+    ablation = pd.DataFrame(abl)
+    ablation.to_csv(settings.RESULTS_DIR / "ablation.csv", index=False)
+
     # ---- files
     nav = pd.DataFrame({k: v.nav for k, v in runs.items()})
     nav.to_csv(settings.RESULTS_DIR / "nav.csv", float_format="%.4f")
@@ -88,7 +104,7 @@ def cmd_backtest(args):
         "data_last_bar": str(px["close"].index[-1].date()), "first_active_date": str(first_active.date()),
         "periods": periods, "settings": {k: getattr(settings, k) for k in [
             "UNIVERSE", "MOM_LOOKBACK_MONTHS", "MOM_SKIP_MONTHS", "SMA_WINDOW", "VOL_TARGET", "VOL_WINDOW",
-            "MAX_POSITION_WEIGHT", "MAX_GROSS_EXPOSURE", "COMMISSION_BPS", "SLIPPAGE_BPS", "RISK_FREE_RATE",
+            "MAX_POSITION_WEIGHT", "MAX_GROSS_EXPOSURE", "SIZING", "REBALANCE_BAND", "COMMISSION_BPS", "SLIPPAGE_BPS", "RISK_FREE_RATE",
             "INITIAL_CAPITAL", "WALK_FORWARD_YEARS", "WALK_FORWARD_STEP_MONTHS"]},
         "metrics": metrics, "walk_forward": wf_summary, "cost_drag": bt.to_jsonable(cost_drag),
         "sizing_diagnostics": sizing_diagnostics(px, runs["strategy"]),
@@ -96,21 +112,30 @@ def cmd_backtest(args):
     plot_equity(runs, first_active)
     write_report()
     print_summary(metrics, wf_summary, sens)
+    print("\n== ablation:")
+    print(ablation[["config", "cagr", "ann_vol", "sharpe", "max_drawdown", "avg_gross_exposure", "n_trades", "annual_turnover", "cagr_drag"]].round(4).to_string(index=False))
 
 
 def sizing_diagnostics(px, res):
-    """How often the 20% cap (vs. the vol scaling) determines a position's size."""
+    """What sets the size under portfolio vol targeting: the vol target, the gross cap, or the single-name cap."""
     import strategy
     tw = res.target_weights
-    vol = strategy.realized_vol(px["close"]).reindex(tw.index)
     on = tw > 0
-    raw = settings.VOL_TARGET / vol
-    n_on = int(on.sum().sum())
-    return {"position_months_on": n_on,
-            "share_cap_binding": float(((raw > settings.MAX_POSITION_WEIGHT) & on).sum().sum() / n_on) if n_on else None,
-            "share_vol_scaling_binding": float(((raw <= settings.MAX_POSITION_WEIGHT) & on).sum().sum() / n_on) if n_on else None,
-            "share_months_fully_invested": float((tw.sum(axis=1) > 0.999).mean()),
+    active = tw[on.any(axis=1)]
+    gross = active.sum(axis=1)
+    # gross before the single-name cap would be min(1, target/vol); after the cap it can only be lower.
+    # A month is "vol-target bound" when gross < 100% and no position sits at the 20% cap (so the cap did not cut it).
+    at_cap = (active >= settings.MAX_POSITION_WEIGHT - 1e-9).any(axis=1)
+    vol_bound = (gross < 0.999) & ~at_cap
+    cap_bound = at_cap
+    full = gross >= 0.999
+    return {"position_months_on": int(on.sum().sum()), "months_active": int(len(active)),
+            "share_months_vol_target_binding": float(vol_bound.mean()),
+            "share_months_name_cap_binding": float(cap_bound.mean()),
+            "share_months_fully_invested": float(full.mean()),
             "share_months_all_cash": float((tw.sum(axis=1) < 0.001).mean()),
+            "avg_gross_when_active": float(gross.mean()),
+            "min_gross_when_active": float(gross.min()),
             "avg_positions_on": float(on.sum(axis=1).mean())}
 
 

@@ -92,14 +92,35 @@ def key_findings(m: dict, sens: pd.DataFrame) -> str:
         f"{pct(wf['pct_windows_positive_sharpe'], 0)} of windows are positive but the strategy beats SPY's Sharpe in only {pct(wf['pct_windows_beat_spy'], 0)} of them.",
         f"- **Sensitivity:** full-period Sharpe across the 3x3 grid spans {num(sh.min())} to {num(sh.max())}; longer lookbacks are monotonically better and the vol target changes almost nothing. "
         f"Results are not fragile, but 12 months (the literature default) is also the best cell, so treat the point estimate as optimistic.",
-        f"- **The vol target is nearly inert:** the 20% position cap sets the size in {pct(sd['share_cap_binding'])} of position-months; per-position vol scaling to "
-        f"{pct(m['settings']['VOL_TARGET'], 0)} only binds when 60-day vol exceeds {pct(m['settings']['VOL_TARGET'] / m['settings']['MAX_POSITION_WEIGHT'], 0)}. "
-        f"In practice the sizing is 'equal-weight up to 20%, scaled down when more than 5 signals are on' (average {num(sd['avg_positions_on'], 1)} positions on; "
-        f"fully invested {pct(sd['share_months_fully_invested'], 0)} of months, all cash {pct(sd['share_months_all_cash'], 0)}).",
-        f"- **Costs matter:** {cd['cost_per_side_bps']:.0f} bps per side on {num(S['full']['annual_turnover'])}x annual one-way turnover costs "
-        f"{pct(cd['cagr_drag'])} of CAGR a year ({pct(cd['cagr_no_cost'])} gross to {pct(cd['cagr_with_cost'])} net). Monthly re-sizing of every position whenever the count of signals changes drives most of the turnover.",
+        f"- **What sets the size:** under portfolio-level vol targeting the {pct(m['settings']['VOL_TARGET'], 0)} target is the binding constraint in "
+        f"{pct(sd['share_months_vol_target_binding'], 0)} of active months, the 20% single-name cap in {pct(sd['share_months_name_cap_binding'], 0)}, and the strategy is fully invested in "
+        f"{pct(sd['share_months_fully_invested'], 0)}. Average gross exposure when active is {pct(sd['avg_gross_when_active'], 0)} (minimum {pct(sd['min_gross_when_active'], 0)}); "
+        f"all cash {pct(sd['share_months_all_cash'], 0)} of months; average {num(sd['avg_positions_on'], 1)} positions on.",
+        f"- **Costs:** {cd['cost_per_side_bps']:.0f} bps per side on {num(S['full']['annual_turnover'])}x annual one-way turnover costs "
+        f"{pct(cd['cagr_drag'])} of CAGR a year ({pct(cd['cagr_no_cost'])} gross to {pct(cd['cagr_with_cost'])} net).",
+        ablation_finding(),
     ]
     return "\n".join(lines)
+
+
+def ablation_finding() -> str:
+    a = pd.read_csv(settings.RESULTS_DIR / "ablation.csv").set_index("config")
+    v1, v1b, v2, v2b = a.iloc[0], a.iloc[1], a.iloc[2], a.iloc[3]
+    return (f"- **Design changes (ablation table below):** replacing per-position vol scaling with portfolio-level vol targeting moved full-period Sharpe from "
+            f"{num(v1['sharpe'])} to {num(v2['sharpe'])}, vol from {pct(v1['ann_vol'])} to {pct(v2['ann_vol'])}, max drawdown from {pct(v1['max_drawdown'])} to {pct(v2['max_drawdown'])} "
+            f"and average gross exposure from {pct(v1['avg_gross_exposure'], 0)} to {pct(v2['avg_gross_exposure'], 0)}. Adding a 2pp rebalance band on top cut annual turnover from "
+            f"{num(v2['annual_turnover'])}x to {num(v2b['annual_turnover'])}x and cost drag from {pct(v2['cagr_drag'])} to {pct(v2b['cagr_drag'])} of CAGR a year, "
+            f"at a Sharpe of {num(v2b['sharpe'])}.")
+
+
+def ablation_table() -> str:
+    a = pd.read_csv(settings.RESULTS_DIR / "ablation.csv")
+    out = ["Full period, same data and costs; only the sizing rule and the rebalance band change.", "",
+           "| config | CAGR | vol | Sharpe | max DD | OOS Sharpe | avg gross | trades | turnover | cost drag |", "|---|---|---|---|---|---|---|---|---|---|"]
+    for _, r in a.iterrows():
+        out.append(f"| {r['config']} | {pct(r['cagr'])} | {pct(r['ann_vol'])} | {num(r['sharpe'])} | {pct(r['max_drawdown'])} | {num(r['sharpe_oos'])} | "
+                   f"{pct(r['avg_gross_exposure'], 0)} | {int(r['n_trades'])} | {num(r['annual_turnover'])}x | {pct(r['cagr_drag'])}/yr |")
+    return "\n".join(out)
 
 
 def build_results_section() -> str:
@@ -114,6 +135,7 @@ def build_results_section() -> str:
              "", "### Full period", "", metrics_table(m["metrics"], "full"),
              "", "### Walk-forward: rolling 3-year windows", "", walk_forward_table(m["walk_forward"]),
              "", "### Sensitivity grid", "", sensitivity_table(sens),
+             "### Ablation: sizing rule and rebalance band", "", ablation_table(), "",
              "### Monthly returns (strategy, %)", "", monthly_table_md(settings.RESULTS_DIR / "monthly_returns.csv"),
              "", "![equity curve](results/equity_curve.png)", END]
     return "\n".join(parts)
@@ -135,8 +157,8 @@ def resume_bullets() -> str:
         f"and across {wf['windows']} rolling 3-year walk-forward windows (median Sharpe {num(wf['sharpe_median'])}, {pct(wf['pct_windows_positive_sharpe'], 0)} positive), and reported honestly that it beats SPY's Sharpe in only "
         f"{pct(wf['pct_windows_beat_spy'], 0)} of windows and trails SPY on CAGR ({pct(S['full']['cagr'])} vs {pct(P['full']['cagr'])}).",
         f"- Shipped the paper-trading stack around it: Alpaca paper executor with market-on-open orders, idempotent daily runs, a JSON trade journal, and a risk manager "
-        f"(3% daily / 15% peak drawdown circuit breakers, 20% position and 100% gross caps, market-hours check), plus backtest diagnostics showing the position cap, "
-        f"not the vol target, sets size in {pct(sd['share_cap_binding'])} of position-months and that costs take {pct(cd['cagr_drag'])}/yr off CAGR.",
+        f"(3% daily / 15% peak drawdown circuit breakers, 20% position and 100% gross caps, market-hours check), and used an ablation study to replace an inert per-position "
+        f"vol rule with portfolio-level vol targeting and add a 2pp rebalance band, cutting turnover to {num(S['full']['annual_turnover'])}x and cost drag to {pct(cd['cagr_drag'])}/yr.",
         "", "*Source: results/metrics.json, results/walk_forward.csv, results/sensitivity.csv.*", "",
     ])
 

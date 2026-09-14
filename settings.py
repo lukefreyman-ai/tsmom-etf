@@ -29,14 +29,16 @@ SMA_WINDOW = 200                 # confirmation filter: price must be above its 
 MIN_HISTORY_DAYS = MOM_LOOKBACK_MONTHS * MONTH_DAYS + 5   # bars required before an ETF can get a signal
 
 # ----------------------------------------------------------------------------- sizing
-VOL_TARGET = 0.10                # each position is scaled so its stand-alone annualised vol ~ 10%
-VOL_WINDOW = 60                  # realised-vol estimate: 60 trading days of daily log returns
-MAX_POSITION_WEIGHT = 0.20       # hard cap on any single ETF
+SIZING = "portfolio"             # "portfolio": gross exposure scaled so trailing portfolio vol ~ VOL_TARGET (v2, current)
+                                 # "per_position": each position scaled to VOL_TARGET stand-alone (v1, kept for the ablation)
+VOL_TARGET = 0.10                # annualised vol target (portfolio-level under SIZING="portfolio")
+VOL_WINDOW = 60                  # trailing window of daily log returns for the vol / covariance estimate
+MAX_POSITION_WEIGHT = 0.20       # hard cap on any single ETF (applied after vol scaling; no redistribution)
 MAX_GROSS_EXPOSURE = 1.00        # long-only, no leverage: sum of weights <= 100%
 
 # ----------------------------------------------------------------------------- rebalance
 REBALANCE = "monthly"            # first trading day of each month; signal from the prior close, fill at the open
-MIN_TRADE_WEIGHT = 0.005         # ignore weight changes smaller than 0.5% of NAV (avoids dust trades)
+REBALANCE_BAND = 0.02            # skip a trade when |target - current weight| < 2pp; full entries and exits always trade
 
 # ----------------------------------------------------------------------------- costs (per side)
 COMMISSION_BPS = 5.0             # 5 bps per side commission ...
