@@ -172,8 +172,17 @@ def make_broker() -> AlpacaBroker | OfflineBroker:
         pass
     import os
     key, secret = os.environ.get("ALPACA_KEY_ID", ""), os.environ.get("ALPACA_SECRET_KEY", "")
+    base = os.environ.get("ALPACA_BASE_URL", settings.ALPACA_PAPER_URL).rstrip("/")
+    if base != settings.ALPACA_PAPER_URL:
+        raise SystemExit(f"REFUSING TO RUN: ALPACA_BASE_URL={base!r} is not the paper endpoint {settings.ALPACA_PAPER_URL}")
     if key and secret:
-        return AlpacaBroker(key, secret)
+        broker = AlpacaBroker(key, secret)
+        try:
+            broker.account()                              # fail fast and clearly on bad / placeholder keys
+        except Exception as e:  # noqa: BLE001
+            raise SystemExit(f"Alpaca paper login failed ({type(e).__name__}: {str(e)[:120]}). "
+                             "Check ALPACA_KEY_ID / ALPACA_SECRET_KEY in .env (paper keys from app.alpaca.markets/paper).")
+        return broker
     print("!! no ALPACA_KEY_ID / ALPACA_SECRET_KEY in the environment: using an OFFLINE $100,000 all-cash account")
     return OfflineBroker()
 
