@@ -67,6 +67,11 @@ LIVE_MAX_GROSS_EXPOSURE = MAX_GROSS_EXPOSURE
 MARKET_TZ = "America/New_York"
 MARKET_OPEN = "09:30"
 MARKET_CLOSE = "16:00"
+# Market-on-open (opg) orders must reach Alpaca BEFORE 09:28 ET to join the opening auction. The pre-open window
+# below is the only exception to "regular hours only": orders submitted in it are tagged opg and fill at the open.
+# Set ALLOW_PREOPEN_MOO = False to forbid it (then run the executor after 09:30 and it uses plain market orders).
+ALLOW_PREOPEN_MOO = True
+MOO_WINDOW = ("07:00", "09:28")
 
 # ----------------------------------------------------------------------------- execution (Alpaca PAPER only)
 ALPACA_PAPER_URL = "https://paper-api.alpaca.markets"

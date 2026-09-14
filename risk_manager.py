@@ -75,16 +75,21 @@ class RiskReport:
         return [d for d in self.decisions if not d.accepted]
 
 
-def is_market_hours(now: datetime | None = None) -> tuple[bool, str]:
+def is_market_hours(now: datetime | None = None, allow_preopen_moo: bool | None = None) -> tuple[bool, str]:
+    """Regular session 09:30-16:00 ET on a weekday, or (if allowed) the pre-open MOO submission window."""
     tz = ZoneInfo(settings.MARKET_TZ)
     now = (now or datetime.now(tz)).astimezone(tz)
     if now.weekday() >= 5:
         return False, f"weekend ({now:%a})"
     o = time.fromisoformat(settings.MARKET_OPEN)
     c = time.fromisoformat(settings.MARKET_CLOSE)
-    if not (o <= now.time() < c):
-        return False, f"outside {settings.MARKET_OPEN}-{settings.MARKET_CLOSE} {settings.MARKET_TZ} ({now:%H:%M})"
-    return True, "regular hours"
+    if o <= now.time() < c:
+        return True, "regular hours"
+    allow = settings.ALLOW_PREOPEN_MOO if allow_preopen_moo is None else allow_preopen_moo
+    ws, we = (time.fromisoformat(x) for x in settings.MOO_WINDOW)
+    if allow and ws <= now.time() < we:
+        return True, "pre-open MOO window"
+    return False, f"outside {settings.MARKET_OPEN}-{settings.MARKET_CLOSE} {settings.MARKET_TZ} ({now:%H:%M})"
 
 
 def check_circuit_breakers(portfolio_value: float, state: BreakerState,
@@ -112,8 +117,9 @@ def check_circuit_breakers(portfolio_value: float, state: BreakerState,
     return state, events
 
 
-def reset_breaker(state: BreakerState, flag: bool = settings.CIRCUIT_BREAKER_RESET) -> tuple[BreakerState, bool]:
-    """Clear a halt only if the manual flag in settings.py is True. Returns (state, was_reset)."""
+def reset_breaker(state: BreakerState, flag: bool | None = None) -> tuple[BreakerState, bool]:
+    """Clear a halt only if the manual flag in settings.py is True (read at call time). Returns (state, was_reset)."""
+    flag = settings.CIRCUIT_BREAKER_RESET if flag is None else flag
     if state.halted and flag:
         state.halted, state.reason, state.tripped_at = False, "", ""
         return state, True

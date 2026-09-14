@@ -16,8 +16,13 @@ def test_market_hours():
     assert rm.is_market_hours(OPEN)[0]
     assert not rm.is_market_hours(NIGHT)[0]
     assert not rm.is_market_hours(SAT)[0]
-    assert not rm.is_market_hours(datetime(2026, 9, 14, 9, 29, tzinfo=NY))[0]
     assert rm.is_market_hours(datetime(2026, 9, 14, 9, 30, tzinfo=NY))[0]
+    # pre-open market-on-open window: allowed only when the settings flag says so
+    pre = datetime(2026, 9, 14, 8, 30, tzinfo=NY)
+    assert rm.is_market_hours(pre, allow_preopen_moo=True) == (True, "pre-open MOO window")
+    assert not rm.is_market_hours(pre, allow_preopen_moo=False)[0]
+    assert not rm.is_market_hours(datetime(2026, 9, 14, 9, 29, tzinfo=NY), allow_preopen_moo=True)[0]   # after 09:28 cutoff
+    assert not rm.is_market_hours(datetime(2026, 9, 14, 6, 59, tzinfo=NY), allow_preopen_moo=True)[0]
     assert not rm.is_market_hours(datetime(2026, 9, 14, 16, 0, tzinfo=NY))[0]
     # a naive-UTC-ish datetime in another zone is converted correctly (14:00 UTC = 10:00 ET in September)
     assert rm.is_market_hours(datetime(2026, 9, 14, 14, 0, tzinfo=ZoneInfo("UTC")))[0]

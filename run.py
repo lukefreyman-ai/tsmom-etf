@@ -149,6 +149,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("backtest"); p.add_argument("--refresh", action="store_true", help="re-download prices first")
     p = sub.add_parser("dry-run"); p.add_argument("--force", action="store_true", help="compute even if today is not a rebalance day")
+    p.add_argument("--refresh", action="store_true", help="re-download prices first (trade always does)")
     p = sub.add_parser("trade"); p.add_argument("--dry-run", action="store_true"); p.add_argument("--force", action="store_true")
     sub.add_parser("status")
     a = ap.parse_args(argv)

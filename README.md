@@ -221,7 +221,7 @@ Period: 2006-02-01 to 2026-09-14 (20.62 years)
 | position cap | any order that would put one ETF above **20%** of NAV (`LIVE_MAX_POSITION_WEIGHT`) | reject that order |
 | gross cap | any order that would push gross exposure above **100%** (`LIVE_MAX_GROSS_EXPOSURE`) | reject that order |
 | no shorts | any sell larger than the position | reject that order |
-| hours | orders outside 09:30-16:00 America/New_York, or on a non-trading day | reject |
+| hours | orders outside 09:30-16:00 America/New_York or on a non-trading day; the only exception is the 07:00-09:28 pre-open window for market-on-open orders (`ALLOW_PREOPEN_MOO`) | reject |
 
 **Halt** means: cancel open orders, do **not** flatten positions, write a `circuit_breaker` event to the journal, and
 refuse all new orders until a human sets `CIRCUIT_BREAKER_RESET = True` in `settings.py` and runs `python run.py status`
@@ -272,7 +272,7 @@ session (Alpaca rejects `opg` after 09:28 ET). Quantities are whole shares (Alpa
 ```bash
 git clone https://github.com/lukefreyman-ai/tsmom-etf && cd tsmom-etf
 make setup          # venv + requirements
-make test           # 30-odd unit tests incl. the look-ahead tests
+make test           # 39 unit tests incl. the two look-ahead tests
 make backtest       # ~15 s from the committed cache -> results/*, README tables, RESUME_BULLETS.md
 make data           # optional: refresh prices from Yahoo (changes the numbers slightly)
 

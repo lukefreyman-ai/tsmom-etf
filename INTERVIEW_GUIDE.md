@@ -134,6 +134,6 @@ later one.
   cadence.
 - **What breaks the strategy?** Sharp V-shaped reversals (the strategy sells after the drop and rebuys after the
   recovery, like March-May 2020) and long choppy sideways markets (2015-2016, 2022-2023) where it gets whipsawed.
-- **How do you know there is no bug?** 27 unit tests, including hand-calculated signal values, cap and scaling
+- **How do you know there is no bug?** 39 unit tests, including hand-calculated signal values, cap and scaling
   arithmetic, next-open fill timing, cost accounting, and the two look-ahead tests. And the benchmarks run through the
   same engine, so if the engine were wrong, SPY buy-and-hold would not match its known history.
