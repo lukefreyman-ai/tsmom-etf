@@ -1,6 +1,17 @@
 <!-- results:start -->
 _Generated 2026-09-14 from `results/metrics.json`, data through 2026-09-14. Strategy is active from 2006-02-01 (first date with 12 months of history + a 200-day SMA)._
 
+### Key findings
+
+- **Return:** the strategy compounds at 7.9% a year over the full period versus 11.0% for SPY and 8.2% for 60/40. It does **not** beat buy-and-hold SPY on return.
+- **Risk:** its worst drawdown is -14.5% against -55.2% for SPY and -32.6% for 60/40, at 10.5% annualised vol. The edge is drawdown control, not return.
+- **Risk-adjusted:** full-period Sharpe 0.78 (SPY 0.64, 60/40 0.78); Calmar 0.54 vs 0.20 / 0.25.
+- **In-sample vs out-of-sample:** Sharpe 0.61 in-sample and 0.96 out-of-sample. Out-of-sample is *better*, which says more about 2016-2026 (a long trending bull market with two sharp, momentum-friendly sell-offs) than about the strategy. SPY's own Sharpe rose from 0.43 to 0.88 over the same split.
+- **Walk-forward:** across 36 rolling 3-year windows the Sharpe ranges 0.31 to 1.33 (median 0.70); 100% of windows are positive but the strategy beats SPY's Sharpe in only 36% of them.
+- **Sensitivity:** full-period Sharpe across the 3x3 grid spans 0.72 to 0.78; longer lookbacks are monotonically better and the vol target changes almost nothing. Results are not fragile, but 12 months (the literature default) is also the best cell, so treat the point estimate as optimistic.
+- **The vol target is nearly inert:** the 20% position cap sets the size in 99.8% of position-months; per-position vol scaling to 10% only binds when 60-day vol exceeds 50%. In practice the sizing is 'equal-weight up to 20%, scaled down when more than 5 signals are on' (average 5.4 positions on; fully invested 65% of months, all cash 7%).
+- **Costs matter:** 10 bps per side on 1.73x annual one-way turnover costs 0.4% of CAGR a year (8.3% gross to 7.9% net). Monthly re-sizing of every position whenever the count of signals changes drives most of the turnover.
+
 ### In-sample (2005-2015)
 
 Period: 2006-02-01 to 2015-12-31 (9.91 years)

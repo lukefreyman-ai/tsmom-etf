@@ -43,6 +43,11 @@ def cmd_backtest(args):
         "out_of_sample": settings.OUT_OF_SAMPLE,
     }
     metrics = {name: {p: bt.to_jsonable(bt.compute_metrics(r, *periods[p])) for p in periods} for name, r in runs.items()}
+    # cost drag: same strategy with zero costs, full period
+    free = bt.compute_metrics(bt.run_backtest(px, cost_per_side=0.0), *periods["full"])
+    cost_drag = {"cagr_no_cost": free["cagr"], "cagr_with_cost": metrics["strategy"]["full"]["cagr"],
+                 "cagr_drag": free["cagr"] - metrics["strategy"]["full"]["cagr"],
+                 "sharpe_no_cost": free["sharpe"], "cost_per_side_bps": settings.COMMISSION_BPS + settings.SLIPPAGE_BPS}
 
     # ---- walk-forward: rolling 3-year Sharpe, strategy vs SPY, from the first active date
     wf = bt.rolling_sharpe(runs["strategy"], start=first_active)
@@ -85,11 +90,28 @@ def cmd_backtest(args):
             "UNIVERSE", "MOM_LOOKBACK_MONTHS", "MOM_SKIP_MONTHS", "SMA_WINDOW", "VOL_TARGET", "VOL_WINDOW",
             "MAX_POSITION_WEIGHT", "MAX_GROSS_EXPOSURE", "COMMISSION_BPS", "SLIPPAGE_BPS", "RISK_FREE_RATE",
             "INITIAL_CAPITAL", "WALK_FORWARD_YEARS", "WALK_FORWARD_STEP_MONTHS"]},
-        "metrics": metrics, "walk_forward": wf_summary,
+        "metrics": metrics, "walk_forward": wf_summary, "cost_drag": bt.to_jsonable(cost_drag),
+        "sizing_diagnostics": sizing_diagnostics(px, runs["strategy"]),
     }, indent=2))
     plot_equity(runs, first_active)
     write_report()
     print_summary(metrics, wf_summary, sens)
+
+
+def sizing_diagnostics(px, res):
+    """How often the 20% cap (vs. the vol scaling) determines a position's size."""
+    import strategy
+    tw = res.target_weights
+    vol = strategy.realized_vol(px["close"]).reindex(tw.index)
+    on = tw > 0
+    raw = settings.VOL_TARGET / vol
+    n_on = int(on.sum().sum())
+    return {"position_months_on": n_on,
+            "share_cap_binding": float(((raw > settings.MAX_POSITION_WEIGHT) & on).sum().sum() / n_on) if n_on else None,
+            "share_vol_scaling_binding": float(((raw <= settings.MAX_POSITION_WEIGHT) & on).sum().sum() / n_on) if n_on else None,
+            "share_months_fully_invested": float((tw.sum(axis=1) > 0.999).mean()),
+            "share_months_all_cash": float((tw.sum(axis=1) < 0.001).mean()),
+            "avg_positions_on": float(on.sum(axis=1).mean())}
 
 
 def plot_equity(runs, start):

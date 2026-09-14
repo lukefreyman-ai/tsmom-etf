@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-14T18:24:08",
+  "generated": "2026-09-14T18:30:44",
   "data_last_bar": "2026-09-14",
   "first_active_date": "2006-02-01",
   "periods": {
@@ -252,5 +252,20 @@
     "pct_windows_positive_sharpe": 1.0,
     "pct_windows_beat_spy": 0.3611111111111111,
     "worst_window_max_drawdown": -0.14481821089683145
+  },
+  "cost_drag": {
+    "cagr_no_cost": 0.08252893281564311,
+    "cagr_with_cost": 0.07886079660628575,
+    "cagr_drag": 0.0036681362093573533,
+    "sharpe_no_cost": 0.809129842336438,
+    "cost_per_side_bps": 10.0
+  },
+  "sizing_diagnostics": {
+    "position_months_on": 1402,
+    "share_cap_binding": 0.9978601997146933,
+    "share_vol_scaling_binding": 0.0021398002853067048,
+    "share_months_fully_invested": 0.65,
+    "share_months_all_cash": 0.07307692307692308,
+    "avg_positions_on": 5.392307692307693
   }
 }
