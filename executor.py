@@ -239,7 +239,7 @@ def run_rebalance(broker, dry_run: bool, force: bool = False, refresh: bool | No
     equity = acct["equity"]
     pos = broker.positions()
     prices_live = {t: p["price"] for t, p in pos.items()}
-    print(f"account {acct['account_number']}  equity ${equity:,.2f}  cash ${acct['cash']:,.2f}  positions: "
+    print(f"account ***{acct['account_number'][-4:]}  equity ${equity:,.2f}  cash ${acct['cash']:,.2f}  positions: "
           + (", ".join(f"{t} {p['qty']:g}" for t, p in pos.items()) or "none"))
 
     # 1. circuit breakers (using the broker's previous-close equity for the daily check)
@@ -351,7 +351,7 @@ def cmd_status(broker) -> None:
         print("note: CIRCUIT_BREAKER_RESET is True but nothing is halted; set it back to False.")
     state["breaker"] = asdict(bs)
     acct = broker.account(); pos = broker.positions()
-    print(f"account {acct['account_number']} ({acct['status']})  equity ${acct['equity']:,.2f}  cash ${acct['cash']:,.2f}  "
+    print(f"account ***{acct['account_number'][-4:]} ({acct['status']})  equity ${acct['equity']:,.2f}  cash ${acct['cash']:,.2f}  "
           f"prev close ${acct['last_equity']:,.2f}  HWM ${bs.high_water_mark:,.2f}")
     for t, p in sorted(pos.items()):
         print(f"  {t:4} {p['qty']:>8g} sh  ${p['market_value']:>12,.2f}  {p['market_value'] / acct['equity']:.1%}")

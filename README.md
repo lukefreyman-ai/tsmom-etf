@@ -80,9 +80,9 @@ _Generated 2026-09-14 from `results/metrics.json`, data through 2026-09-14. Stra
 - **Sensitivity:** full-period Sharpe across the 3x3 grid spans 0.71 to 0.80; longer lookbacks are monotonically better and the vol target changes almost nothing. Results are not fragile, but 12 months (the literature default) is also the best cell, so treat the point estimate as optimistic.
 - **What sets the size:** under portfolio-level vol targeting the 10% target is the binding constraint in 18% of active months, the 20% single-name cap in 77%, and the strategy is fully invested in 5%. Average gross exposure when active is 76% (minimum 20%); all cash 7% of months; average 5.4 positions on.
 - **Costs:** 10 bps per side on 1.46x annual one-way turnover costs 0.3% of CAGR a year (6.7% gross to 6.4% net).
-- **Design changes (ablation table below):** replacing per-position vol scaling with portfolio-level vol targeting moved full-period Sharpe from 0.78 to 0.78, vol from 10.5% to 8.3%, max drawdown from -14.5% to -11.6% and average gross exposure from 85% to 74%. Adding a 2pp rebalance band on top cut annual turnover from 1.58x to 1.46x and cost drag from 0.3% to 0.3% of CAGR a year, at a Sharpe of 0.78.
+- **Design changes (ablation table below):** replacing per-position vol scaling with portfolio-level vol targeting left full-period Sharpe effectively unchanged (0.777 to 0.784) while cutting vol from 10.5% to 8.3%, max drawdown from -14.5% to -11.6% and average gross exposure from 85% to 74%. Adding a 2pp rebalance band on top cut annual turnover from 1.58x to 1.46x and cost drag from 0.33% to 0.30% of CAGR a year, at a Sharpe of 0.78.
 
-### In-sample (2005-2015)
+### In-sample (2006-2015)
 
 Period: 2006-02-01 to 2015-12-31 (9.91 years)
 
@@ -296,7 +296,7 @@ session (Alpaca rejects `opg` after 09:28 ET). Quantities are whole shares (Alpa
 git clone https://github.com/lukefreyman-ai/tsmom-etf && cd tsmom-etf
 make setup          # venv + requirements
 make test           # 45 unit tests incl. the look-ahead tests
-make backtest       # ~15 s from the committed cache -> results/*, README tables, RESUME_BULLETS.md
+make backtest       # ~15 s from the committed cache -> results/*, README tables
 make data           # optional: refresh prices from Yahoo (changes the numbers slightly)
 
 cp .env.example .env    # paste Alpaca PAPER keys
@@ -308,4 +308,4 @@ python run.py trade     # submit paper orders (rebalance day only; --force to ov
 Layout: `settings.py` (all parameters) · `data_loader.py` · `strategy.py` · `backtester.py` · `risk_manager.py` ·
 `executor.py` · `run.py` (CLI) · `report.py` (README/RESUME tables from `results/`) · `tests/` · `data/` (cache) · `results/`.
 
-See also `INTERVIEW_GUIDE.md` (plain-language walkthrough) and `RESUME_BULLETS.md` (generated).
+See also `DESIGN_NOTES.md` (plain-language walkthrough).

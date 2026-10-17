@@ -106,10 +106,10 @@ def key_findings(m: dict, sens: pd.DataFrame) -> str:
 def ablation_finding() -> str:
     a = pd.read_csv(settings.RESULTS_DIR / "ablation.csv").set_index("config")
     v1, v1b, v2, v2b = a.iloc[0], a.iloc[1], a.iloc[2], a.iloc[3]
-    return (f"- **Design changes (ablation table below):** replacing per-position vol scaling with portfolio-level vol targeting moved full-period Sharpe from "
-            f"{num(v1['sharpe'])} to {num(v2['sharpe'])}, vol from {pct(v1['ann_vol'])} to {pct(v2['ann_vol'])}, max drawdown from {pct(v1['max_drawdown'])} to {pct(v2['max_drawdown'])} "
+    return (f"- **Design changes (ablation table below):** replacing per-position vol scaling with portfolio-level vol targeting left full-period Sharpe effectively unchanged "
+            f"({num(v1['sharpe'], 3)} to {num(v2['sharpe'], 3)}) while cutting vol from {pct(v1['ann_vol'])} to {pct(v2['ann_vol'])}, max drawdown from {pct(v1['max_drawdown'])} to {pct(v2['max_drawdown'])} "
             f"and average gross exposure from {pct(v1['avg_gross_exposure'], 0)} to {pct(v2['avg_gross_exposure'], 0)}. Adding a 2pp rebalance band on top cut annual turnover from "
-            f"{num(v2['annual_turnover'])}x to {num(v2b['annual_turnover'])}x and cost drag from {pct(v2['cagr_drag'])} to {pct(v2b['cagr_drag'])} of CAGR a year, "
+            f"{num(v2['annual_turnover'])}x to {num(v2b['annual_turnover'])}x and cost drag from {pct(v2['cagr_drag'], 2)} to {pct(v2b['cagr_drag'], 2)} of CAGR a year, "
             f"at a Sharpe of {num(v2b['sharpe'])}.")
 
 
@@ -130,7 +130,7 @@ def build_results_section() -> str:
              f"_Generated {m['generated'][:10]} from `results/metrics.json`, data through {m['data_last_bar']}. "
              f"Strategy is active from {m['first_active_date']} (first date with 12 months of history + a 200-day SMA)._",
              "", "### Key findings", "", key_findings(m, sens),
-             "", "### In-sample (2005-2015)", "", metrics_table(m["metrics"], "in_sample"),
+             "", "### In-sample (2006-2015)", "", metrics_table(m["metrics"], "in_sample"),
              "", "### Out-of-sample (2016-present)", "", metrics_table(m["metrics"], "out_of_sample"),
              "", "### Full period", "", metrics_table(m["metrics"], "full"),
              "", "### Walk-forward: rolling 3-year windows", "", walk_forward_table(m["walk_forward"]),

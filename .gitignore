@@ -6,3 +6,5 @@ __pycache__/
 .DS_Store
 results/trade_journal.json
 results/live_state.json
+RESUME_BULLETS.md
+results/results_section.md
