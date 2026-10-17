@@ -1,0 +1,4 @@
+# report.py still generates RESUME_BULLETS.md for local use. The output file is
+# gitignored and untracked; only the generator's own heading text matches, so the
+# finding is about code, not about anything published.
+report\.py
